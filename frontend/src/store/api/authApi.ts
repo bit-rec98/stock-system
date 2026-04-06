@@ -1,5 +1,5 @@
 import { apiSlice } from "./apiSlice";
-import { LoginCredentials, RegisterData, AuthResponse } from "../../types";
+import { LoginCredentials, RegisterData, AuthResponse, ChangePasswordData } from "../../types";
 
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -17,7 +17,14 @@ export const authApi = apiSlice.injectEndpoints({
         body: data,
       }),
     }),
+    changePassword: builder.mutation<{ message: string }, ChangePasswordData>({
+      query: (data) => ({
+        url: "/auth/change-password",
+        method: "POST",
+        body: data,
+      }),
+    }),
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation } = authApi;
+export const { useLoginMutation, useRegisterMutation, useChangePasswordMutation } = authApi;

@@ -103,6 +103,19 @@ public class AuthService : IAuthService
             : Result<bool>.Failure(result.Errors.Select(e => e.Description));
     }
 
+    public async Task<Result<bool>> ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Result<bool>.Failure("User not found.");
+
+        var result = await _userManager.ChangePasswordAsync(user, changePasswordDto.CurrentPassword, changePasswordDto.NewPassword);
+        if (!result.Succeeded)
+            return Result<bool>.Failure(result.Errors.Select(e => e.Description));
+
+        return Result<bool>.Success(true);
+    }
+
     private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);

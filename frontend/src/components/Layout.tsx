@@ -26,6 +26,7 @@ import {
   LocalShipping as SupplierIcon,
   AccountCircle,
   Logout,
+  Lock,
 } from "@mui/icons-material";
 import { RootState } from "../store";
 import { logout } from "../store/slices/authSlice";
@@ -142,6 +143,10 @@ export default function Layout() {
               {user?.email}
             </MenuItem>
             <Divider />
+            <MenuItem onClick={() => { handleMenuClose(); navigate("/change-password"); }}>
+              <Lock sx={{ mr: 1 }} />
+              Change Password
+            </MenuItem>
             <MenuItem onClick={handleLogout}>
               <Logout sx={{ mr: 1 }} />
               Logout

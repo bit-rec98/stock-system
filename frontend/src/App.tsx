@@ -8,6 +8,7 @@ import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
 import Categories from "./pages/Categories";
 import Suppliers from "./pages/Suppliers";
+import ChangePassword from "./pages/ChangePassword";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -37,6 +38,7 @@ function App() {
         <Route path="products/:id/edit" element={<ProductForm />} />
         <Route path="categories" element={<Categories />} />
         <Route path="suppliers" element={<Suppliers />} />
+        <Route path="change-password" element={<ChangePassword />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

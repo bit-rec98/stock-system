@@ -140,3 +140,9 @@ export interface User {
   lastName: string;
   roles: string[];
 }
+
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockSystem.Application.DTOs.Auth;
 using StockSystem.Application.Interfaces;
@@ -35,5 +37,21 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = result.Error, errors = result.Errors });
 
         return Ok(result.Data);
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var result = await _authService.ChangePasswordAsync(userId, changePasswordDto);
+
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error, errors = result.Errors });
+
+        return Ok(new { message = "Password changed successfully" });
     }
 }

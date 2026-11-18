@@ -8,7 +8,7 @@ Browser ──► Netlify or Vercel (static React build)
    └─ HTTPS + Bearer JWT ──► Render (API container) ──► Azure SQL Database (free offer)
 ```
 
-Netlify and Vercel only host the frontend: they cannot run a long-lived ASP.NET Core process or SQL Server. See [ADR-002](adr/ADR-002-hosting.md).
+Netlify and Vercel only host the frontend: they cannot run a long-lived ASP.NET Core process or SQL Server.
 
 > **Verification status:** the steps below were written from the project's configuration and from third-party summaries of each provider's free tier. None of them have been executed, and provider terms and limits change. Check each provider's current documentation and pricing before relying on them.
 

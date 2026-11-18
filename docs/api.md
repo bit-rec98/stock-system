@@ -11,7 +11,7 @@ Roles: **A** = Admin, **S** = Staff. "Any" = Admin or Staff.
 | POST | `/auth/login` | anonymous, rate limited | Body `{ email, password }`. Returns `{ token, email, firstName, lastName, roles, expiration }`. `401` for wrong credentials, unknown or locked accounts (same message). |
 | POST | `/auth/register` | **A** | Creates a user. Body `{ email, password, firstName, lastName, role }` where `role` is `Admin` or `Staff`. Returns `201 { email, firstName, lastName, role }`. Does not sign the new user in. |
 | POST | `/auth/change-password` | any signed-in user, rate limited | Body `{ currentPassword, newPassword, confirmNewPassword }`. |
-| POST | `/auth/change-email` | any signed-in user, rate limited | Body `{ newEmail, currentPassword }`. Changes the caller's own email, which is also the login name. Returns a **new session** (same shape as login) because the token carries the email; the old token keeps working until it expires but shows the old email. Failures are `400` (wrong password, same email, address already used, invalid format). Wrong passwords count toward the account lockout. See [ADR-006](adr/ADR-006-email-change.md). |
+| POST | `/auth/change-email` | any signed-in user, rate limited | Body `{ newEmail, currentPassword }`. Changes the caller's own email, which is also the login name. Returns a **new session** (same shape as login) because the token carries the email; the old token keeps working until it expires but shows the old email. Failures are `400` (wrong password, same email, address already used, invalid format). Wrong passwords count toward the account lockout. |
 
 Password policy: 8 to 128 characters with an uppercase letter, a lowercase letter and a digit.
 

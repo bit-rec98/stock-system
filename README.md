@@ -47,9 +47,6 @@ cd frontend && npm run lint && npm run build && npm test
 | [docs/architecture.md](docs/architecture.md) | Layers, authentication/authorization model, data |
 | [docs/api.md](docs/api.md) | Endpoints, roles, error format |
 | [docs/deployment.md](docs/deployment.md) | Netlify/Vercel frontend + free API/database hosting |
-| [docs/adr/](docs/adr/) | Architecture decision records |
-| [docs/project-status.md](docs/project-status.md) | Audit against the engineering standards, what is done and what remains |
-| [CHANGELOG.md](CHANGELOG.md) | Notable changes |
 
 ## Project structure
 

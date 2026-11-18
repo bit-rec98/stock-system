@@ -1,5 +1,5 @@
 import { apiSlice } from "./apiSlice";
-import { LoginCredentials, RegisterData, AuthResponse, ChangePasswordData, CreatedUser } from "../../types";
+import { LoginCredentials, RegisterData, AuthResponse, ChangePasswordData, ChangeEmailData, CreatedUser } from "../../types";
 
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -16,6 +16,15 @@ export const authApi = apiSlice.injectEndpoints({
         method: "POST",
         body: data,
       }),
+      invalidatesTags: [{ type: "User", id: "LIST" }],
+    }),
+    changeEmail: builder.mutation<AuthResponse, ChangeEmailData>({
+      query: (data) => ({
+        url: "/auth/change-email",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: [{ type: "User", id: "LIST" }],
     }),
     changePassword: builder.mutation<{ message: string }, ChangePasswordData>({
       query: (data) => ({
@@ -27,4 +36,9 @@ export const authApi = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useChangePasswordMutation } = authApi;
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useChangeEmailMutation,
+  useChangePasswordMutation,
+} = authApi;

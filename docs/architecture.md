@@ -31,10 +31,11 @@ forwarded headers → (Development: Swagger / Production: HSTS + generic excepti
   | Policy | Roles | Used for |
   |---|---|---|
   | `StaffOrAdmin` | Admin, Staff | Class-level default on products, categories and suppliers controllers (all reads) |
-  | `AdminOnly` | Admin | User creation, product deletion, category and supplier create/update/delete |
+  | `AdminOnly` | Admin | User creation and the user list, product deletion, category and supplier create/update/delete |
 
   Staff can also create and update products and export reports.
 - **Users:** only an Admin can create users (`POST /api/auth/register`), choosing `Admin` or `Staff`. Role changes and account disabling take effect when the token expires (`JWT_EXPIRATION_HOURS`, default 8), because the role is carried in the token.
+- **Own email:** a signed-in user can change their email with `POST /api/auth/change-email`, confirming the current password. Email and user name are updated together and a new token is issued ([ADR-006](adr/ADR-006-email-change.md)).
 - **Frontend:** hides controls the role cannot use (`useIsAdmin`). This is convenience only; the API enforces every rule. The token is kept in `localStorage` ([ADR-005](adr/ADR-005-token-storage.md)).
 
 ## Data

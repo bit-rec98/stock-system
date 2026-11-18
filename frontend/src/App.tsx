@@ -14,6 +14,7 @@ const ProductForm = lazy(() => import("./pages/ProductForm"));
 const Categories = lazy(() => import("./pages/Categories"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
+const ChangeEmail = lazy(() => import("./pages/ChangeEmail"));
 const Users = lazy(() => import("./pages/Users"));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -58,6 +59,7 @@ function App() {
         <Route path="products/:id/edit" element={<ProductForm />} />
         <Route path="categories" element={<Categories />} />
         <Route path="suppliers" element={<Suppliers />} />
+        <Route path="change-email" element={<ChangeEmail />} />
         <Route path="change-password" element={<ChangePassword />} />
         <Route path="users" element={<AdminRoute><Users /></AdminRoute>} />
       </Route>

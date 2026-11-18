@@ -108,6 +108,52 @@ public class AuthService : IAuthService
         return Result<bool>.Success(true);
     }
 
+    public async Task<Result<AuthResponseDto>> ChangeEmailAsync(string userId, ChangeEmailDto changeEmailDto)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null || !user.IsActive)
+            return Result<AuthResponseDto>.Failure("User not found.");
+
+        // The password check shares the login lockout counter, so this endpoint cannot be used to guess passwords.
+        const string wrongPassword = "Current password is incorrect.";
+        if (await _userManager.IsLockedOutAsync(user))
+            return Result<AuthResponseDto>.Failure(wrongPassword);
+
+        if (!await _userManager.CheckPasswordAsync(user, changeEmailDto.CurrentPassword))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Result<AuthResponseDto>.Failure(wrongPassword);
+        }
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+        var newEmail = changeEmailDto.NewEmail.Trim();
+        if (string.Equals(newEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+            return Result<AuthResponseDto>.Failure("The new email is the same as the current one.");
+
+        var existing = await _userManager.FindByEmailAsync(newEmail);
+        if (existing != null && existing.Id != user.Id)
+            return Result<AuthResponseDto>.Failure("This email address is not available.");
+
+        // Email and user name are kept identical (the email is the login). One update keeps them consistent.
+        user.Email = newEmail;
+        user.UserName = newEmail;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return Result<AuthResponseDto>.Failure(result.Errors.Select(e => e.Description));
+
+        var token = await GenerateJwtToken(user);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return Result<AuthResponseDto>.Success(new AuthResponseDto(
+            token,
+            user.Email!,
+            user.FirstName,
+            user.LastName,
+            roles,
+            DateTime.UtcNow.AddHours(GetExpirationHours())
+        ));
+    }
+
     private double GetExpirationHours() =>
         double.TryParse(_configuration["Jwt:ExpirationHours"], System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out var hours) && hours > 0 ? hours : 8;

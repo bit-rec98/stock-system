@@ -60,4 +60,22 @@ public class AuthController : ControllerBase
 
         return Ok(new { message = "Password changed successfully" });
     }
+
+    /// <summary>Changes the signed-in user's email. Returns a new session (token) for the new email.</summary>
+    [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("change-email")]
+    public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailDto changeEmailDto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        // Failures are 400 (not 401): a wrong password here must not be mistaken for an expired session.
+        var result = await _authService.ChangeEmailAsync(userId, changeEmailDto);
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error, errors = result.Errors });
+
+        return Ok(result.Data);
+    }
 }

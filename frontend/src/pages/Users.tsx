@@ -1,13 +1,105 @@
-import { Box, Button, Card, CardContent, MenuItem, TextField, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  InputAdornment,
+  MenuItem,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { Add, Search } from "@mui/icons-material";
+import { DataGrid, GridColDef, GridPaginationModel } from "@mui/x-data-grid";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { useRegisterMutation } from "../store/api/authApi";
-import { RegisterData } from "../types";
+import { useGetUsersQuery } from "../store/api/usersApi";
+import { RegisterData, UserListItem } from "../types";
 
 const PASSWORD_HINT = "At least 8 characters, with an uppercase letter, a lowercase letter and a number";
 
+const formatDate = (value: string | null) => (value ? new Date(value).toLocaleString() : "Never");
+
+function UserStatus({ user }: { user: UserListItem }) {
+  if (!user.isActive) return <Chip label="Disabled" size="small" />;
+  if (user.isLockedOut) return <Chip label="Locked" size="small" color="warning" />;
+  return <Chip label="Active" size="small" color="success" />;
+}
+
+const columns: GridColDef<UserListItem>[] = [
+  { field: "email", headerName: "Email", flex: 1, minWidth: 220, sortable: false },
+  {
+    field: "name",
+    headerName: "Name",
+    width: 180,
+    sortable: false,
+    valueGetter: (params) => `${params.row.firstName} ${params.row.lastName}`.trim(),
+  },
+  {
+    field: "role",
+    headerName: "Role",
+    width: 110,
+    sortable: false,
+    renderCell: (params) => (
+      <Chip
+        label={params.value ?? "None"}
+        size="small"
+        color={params.value === "Admin" ? "primary" : "default"}
+        variant="outlined"
+      />
+    ),
+  },
+  {
+    field: "status",
+    headerName: "Status",
+    width: 110,
+    sortable: false,
+    renderCell: (params) => <UserStatus user={params.row} />,
+  },
+  {
+    field: "lastLoginAt",
+    headerName: "Last sign-in",
+    width: 190,
+    sortable: false,
+    valueFormatter: (params) => formatDate(params.value as string | null),
+  },
+  {
+    field: "createdAt",
+    headerName: "Created",
+    width: 190,
+    sortable: false,
+    valueFormatter: (params) => formatDate(params.value as string),
+  },
+];
+
 export default function Users() {
-  const [createUser, { isLoading }] = useRegisterMutation();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 10 });
+
+  // Wait for a pause in typing before querying, and return to the first page on a new search.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput.trim());
+      setPaginationModel((model) => ({ ...model, page: 0 }));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data, isFetching, isError } = useGetUsersQuery({
+    pageNumber: paginationModel.page + 1,
+    pageSize: paginationModel.pageSize,
+    searchTerm: searchTerm || undefined,
+  });
+
+  const [createUser, { isLoading: isCreating }] = useRegisterMutation();
 
   const {
     register,
@@ -19,11 +111,16 @@ export default function Users() {
     defaultValues: { email: "", password: "", firstName: "", lastName: "", role: "Staff" },
   });
 
-  const onSubmit = async (data: RegisterData) => {
+  const closeDialog = () => {
+    setDialogOpen(false);
+    reset();
+  };
+
+  const onSubmit = async (formData: RegisterData) => {
     try {
-      const created = await createUser(data).unwrap();
+      const created = await createUser(formData).unwrap();
       toast.success(`User ${created.email} created as ${created.role}`);
-      reset();
+      closeDialog();
     } catch (error: unknown) {
       const err = error as { data?: { message?: string; errors?: string[] | Record<string, string[]> } };
       const details = err.data?.errors;
@@ -38,16 +135,56 @@ export default function Users() {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Users
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Typography variant="h4">Users</Typography>
+        <Button variant="contained" startIcon={<Add />} onClick={() => setDialogOpen(true)}>
+          Add User
+        </Button>
+      </Box>
 
-      <Card sx={{ maxWidth: 600 }}>
+      <Card>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Create user
-          </Typography>
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <TextField
+            size="small"
+            placeholder="Search by email or name"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            sx={{ mb: 2, width: { xs: "100%", sm: 360 } }}
+            inputProps={{ maxLength: 100, "aria-label": "Search users" }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          {isError && (
+            <Typography color="error" sx={{ mb: 2 }}>
+              Could not load users.
+            </Typography>
+          )}
+          <DataGrid
+            rows={data?.items ?? []}
+            columns={columns}
+            getRowId={(row) => row.id}
+            loading={isFetching}
+            disableRowSelectionOnClick
+            disableColumnMenu
+            autoHeight
+            paginationMode="server"
+            rowCount={data?.totalCount ?? 0}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[5, 10, 25, 50]}
+          />
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <DialogTitle>Add User</DialogTitle>
+          <DialogContent>
             <TextField
               fullWidth
               margin="normal"
@@ -86,8 +223,7 @@ export default function Users() {
               {...register("password", {
                 required: "Password is required",
                 minLength: { value: 8, message: "Password must be at least 8 characters" },
-                validate: (v) =>
-                  (/[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v)) || PASSWORD_HINT,
+                validate: (v) => (/[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v)) || PASSWORD_HINT,
               })}
               error={!!errors.password}
               helperText={errors.password?.message ?? PASSWORD_HINT}
@@ -109,12 +245,15 @@ export default function Users() {
                 </TextField>
               )}
             />
-            <Button type="submit" variant="contained" disabled={isLoading} sx={{ mt: 2 }}>
-              Create user
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeDialog}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={isCreating}>
+              {isCreating ? "Creating..." : "Create user"}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </DialogActions>
+        </form>
+      </Dialog>
     </Box>
   );
 }

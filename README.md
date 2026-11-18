@@ -11,7 +11,9 @@ Inventory management for a hardware store: products, categories, suppliers, low-
 - Product CRUD with search, category/supplier/price/stock filters, sorting and server-side pagination.
 - Categories and suppliers management (Admin).
 - Low-stock dashboard and PDF/Excel exports that honor the active filters.
-- Account lockout, login rate limiting and password change.
+- Admins see all users in a paginated, searchable list (role, status, last sign-in).
+- Every user can change their own password and email (current password required).
+- Account lockout and login rate limiting.
 
 There is **no public registration**: only an Admin can create users (Users page).
 

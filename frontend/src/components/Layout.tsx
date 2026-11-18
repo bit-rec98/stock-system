@@ -27,6 +27,7 @@ import {
   AccountCircle,
   Logout,
   Lock,
+  Email as EmailIcon,
   People as PeopleIcon,
 } from "@mui/icons-material";
 import { RootState } from "../store";
@@ -149,6 +150,10 @@ export default function Layout() {
               {user?.email}
             </MenuItem>
             <Divider />
+            <MenuItem onClick={() => { handleMenuClose(); navigate("/change-email"); }}>
+              <EmailIcon sx={{ mr: 1 }} />
+              Change Email
+            </MenuItem>
             <MenuItem onClick={() => { handleMenuClose(); navigate("/change-password"); }}>
               <Lock sx={{ mr: 1 }} />
               Change Password

@@ -149,6 +149,29 @@ export interface User {
   roles: string[];
 }
 
+export interface ChangeEmailData {
+  newEmail: string;
+  currentPassword: string;
+}
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string | null;
+  isActive: boolean;
+  isLockedOut: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface UserFilterParams {
+  pageNumber?: number;
+  pageSize?: number;
+  searchTerm?: string;
+}
+
 export interface ChangePasswordData {
   currentPassword: string;
   newPassword: string;

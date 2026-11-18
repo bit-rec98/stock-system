@@ -15,6 +15,7 @@ import {
   Chip,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -28,6 +29,7 @@ import { Category, CreateCategory, UpdateCategory } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function Categories() {
+  const isAdmin = useIsAdmin();
   const { data: categories, isLoading } = useGetCategoriesQuery();
   const [createCategory, { isLoading: creating }] = useCreateCategoryMutation();
   const [updateCategory, { isLoading: updating }] = useUpdateCategoryMutation();
@@ -155,6 +157,9 @@ export default function Categories() {
     },
   ];
 
+  // Staff can view but not change categories/suppliers (enforced by the API; hidden here for clarity).
+  const visibleColumns = isAdmin ? columns : columns.filter((c) => c.field !== "actions");
+
   return (
     <Box>
       <Box
@@ -166,20 +171,22 @@ export default function Categories() {
         }}
       >
         <Typography variant="h4">Categories</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Category
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Category
+          </Button>
+        )}
       </Box>
 
       <Card>
         <CardContent>
           <DataGrid
             rows={categories || []}
-            columns={columns}
+            columns={visibleColumns}
             loading={isLoading}
             disableRowSelectionOnClick
             autoHeight

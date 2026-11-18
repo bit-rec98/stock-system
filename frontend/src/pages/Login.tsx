@@ -30,12 +30,7 @@ export default function Login() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginCredentials>({
-    defaultValues: {
-      email: "admin@stocksystem.com",
-      password: "Admin123!",
-    },
-  });
+  } = useForm<LoginCredentials>();
 
   const onSubmit = async (data: LoginCredentials) => {
     try {
@@ -135,15 +130,6 @@ export default function Login() {
             </Button>
           </form>
 
-          <Box sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              Demo credentials:
-              <br />
-              Email: admin@stocksystem.com
-              <br />
-              Password: Admin123!
-            </Typography>
-          </Box>
         </CardContent>
       </Card>
     </Box>

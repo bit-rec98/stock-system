@@ -1,0 +1,22 @@
+# Netlify: deploys the React frontend only. The API is hosted elsewhere (see docs/deployment.md).
+# Set VITE_API_BASE_URL in Site settings > Environment variables to the public API origin.
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Single-page app: serve index.html for client-side routes.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"

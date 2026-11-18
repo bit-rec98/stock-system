@@ -16,6 +16,8 @@ import {
   Grid,
   Tooltip,
 } from "@mui/material";
+import { useIsAdmin } from "../hooks/useIsAdmin";
+import { downloadFile } from "../utils/download";
 import { DataGrid, GridColDef, GridPaginationModel } from "@mui/x-data-grid";
 import {
   Add,
@@ -39,6 +41,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function Products() {
   const navigate = useNavigate();
+  const isAdmin = useIsAdmin();
   const [deleteProduct] = useDeleteProductMutation();
   const { data: categories } = useGetCategoriesQuery();
   const { data: suppliers } = useGetSuppliersQuery();
@@ -103,55 +106,29 @@ export default function Products() {
     setProductToDelete(null);
   };
 
-  const handleExportPdf = async () => {
-    const token = localStorage.getItem("token");
+  const exportFile = async (kind: "pdf" | "excel") => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
         params.append(key, String(value));
       }
     });
+    const extension = kind === "pdf" ? "pdf" : "xlsx";
+    const label = kind === "pdf" ? "PDF" : "Excel";
 
     try {
-      const response = await fetch(`/api/products/export/pdf?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `inventory-report-${new Date().toISOString().split("T")[0]}.pdf`;
-      a.click();
-      toast.success("PDF exported successfully");
+      await downloadFile(
+        `/products/export/${kind}?${params}`,
+        `inventory-report-${new Date().toISOString().split("T")[0]}.${extension}`
+      );
+      toast.success(`${label} exported successfully`);
     } catch {
-      toast.error("Failed to export PDF");
+      toast.error(`Failed to export ${label}`);
     }
   };
 
-  const handleExportExcel = async () => {
-    const token = localStorage.getItem("token");
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        params.append(key, String(value));
-      }
-    });
-
-    try {
-      const response = await fetch(`/api/products/export/excel?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `inventory-report-${new Date().toISOString().split("T")[0]}.xlsx`;
-      a.click();
-      toast.success("Excel exported successfully");
-    } catch {
-      toast.error("Failed to export Excel");
-    }
-  };
+  const handleExportPdf = () => exportFile("pdf");
+  const handleExportExcel = () => exportFile("excel");
 
   const columns: GridColDef[] = [
     { field: "sku", headerName: "SKU", width: 120 },
@@ -206,15 +183,17 @@ export default function Products() {
               <Edit fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => handleDeleteClick(params.row)}
-            >
-              <Delete fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {isAdmin && (
+            <Tooltip title="Delete">
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => handleDeleteClick(params.row)}
+              >
+                <Delete fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       ),
     },

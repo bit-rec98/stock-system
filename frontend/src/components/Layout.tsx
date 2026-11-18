@@ -27,20 +27,26 @@ import {
   AccountCircle,
   Logout,
   Lock,
+  People as PeopleIcon,
 } from "@mui/icons-material";
 import { RootState } from "../store";
 import { logout } from "../store/slices/authSlice";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 
 const drawerWidth = 240;
 
-const menuItems = [
+const baseMenuItems = [
   { text: "Dashboard", icon: <DashboardIcon />, path: "/" },
   { text: "Products", icon: <InventoryIcon />, path: "/products" },
   { text: "Categories", icon: <CategoryIcon />, path: "/categories" },
   { text: "Suppliers", icon: <SupplierIcon />, path: "/suppliers" },
 ];
 
+const adminMenuItems = [{ text: "Users", icon: <PeopleIcon />, path: "/users" }];
+
 export default function Layout() {
+  const isAdmin = useIsAdmin();
+  const menuItems = isAdmin ? [...baseMenuItems, ...adminMenuItems] : baseMenuItems;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();

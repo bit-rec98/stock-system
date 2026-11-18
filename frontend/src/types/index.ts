@@ -123,6 +123,14 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
+  role: "Admin" | "Staff";
+}
+
+export interface CreatedUser {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
 }
 
 export interface AuthResponse {

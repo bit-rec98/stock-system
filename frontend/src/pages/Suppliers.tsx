@@ -15,6 +15,7 @@ import {
   Chip,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -28,6 +29,7 @@ import { Supplier, CreateSupplier, UpdateSupplier } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function Suppliers() {
+  const isAdmin = useIsAdmin();
   const { data: suppliers, isLoading } = useGetSuppliersQuery();
   const [createSupplier, { isLoading: creating }] = useCreateSupplierMutation();
   const [updateSupplier, { isLoading: updating }] = useUpdateSupplierMutation();
@@ -170,6 +172,9 @@ export default function Suppliers() {
     },
   ];
 
+  // Staff can view but not change categories/suppliers (enforced by the API; hidden here for clarity).
+  const visibleColumns = isAdmin ? columns : columns.filter((c) => c.field !== "actions");
+
   return (
     <Box>
       <Box
@@ -181,20 +186,22 @@ export default function Suppliers() {
         }}
       >
         <Typography variant="h4">Suppliers</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Supplier
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Supplier
+          </Button>
+        )}
       </Box>
 
       <Card>
         <CardContent>
           <DataGrid
             rows={suppliers || []}
-            columns={columns}
+            columns={visibleColumns}
             loading={isLoading}
             disableRowSelectionOnClick
             autoHeight

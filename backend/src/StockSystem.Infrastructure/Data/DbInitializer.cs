@@ -1,49 +1,67 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using StockSystem.Domain.Common;
 using StockSystem.Domain.Entities;
 
 namespace StockSystem.Infrastructure.Data;
 
+public record SeedOptions(string? AdminEmail, string? AdminPassword, bool SeedSampleData);
+
 public static class DbInitializer
 {
+    /// <summary>
+    /// Applies pending migrations, ensures roles exist and, when configured, creates the initial
+    /// admin user and demo data. No credentials are hardcoded: the admin comes from <see cref="SeedOptions"/>.
+    /// </summary>
     public static async Task SeedAsync(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole> roleManager)
+        RoleManager<IdentityRole> roleManager,
+        SeedOptions options)
     {
-        // Ensure database is created
-        await context.Database.EnsureCreatedAsync();
+        if (context.Database.IsRelational())
+            await context.Database.MigrateAsync();
+        else
+            await context.Database.EnsureCreatedAsync(); // non-relational providers (tests) have no migrations
 
-        // Seed roles
-        var roles = new[] { "Admin" };
-        foreach (var role in roles)
+        foreach (var role in Roles.All)
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
-                await roleManager.CreateAsync(new IdentityRole(role));
+                var created = await roleManager.CreateAsync(new IdentityRole(role));
+                if (!created.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Could not create role '{role}': {string.Join("; ", created.Errors.Select(e => e.Description))}");
             }
         }
 
-        // Seed admin user
-        var adminEmail = "admin@stocksystem.com";
-        if (await userManager.FindByEmailAsync(adminEmail) == null)
+        if (!string.IsNullOrWhiteSpace(options.AdminEmail) && !string.IsNullOrEmpty(options.AdminPassword)
+            && await userManager.FindByEmailAsync(options.AdminEmail) == null)
         {
             var adminUser = new ApplicationUser
             {
-                UserName = adminEmail,
-                Email = adminEmail,
+                UserName = options.AdminEmail,
+                Email = options.AdminEmail,
                 FirstName = "System",
                 LastName = "Administrator",
                 EmailConfirmed = true,
                 IsActive = true
             };
 
-            var result = await userManager.CreateAsync(adminUser, "Admin123!");
-            if (result.Succeeded)
-            {
-                await userManager.AddToRoleAsync(adminUser, "Admin");
-            }
+            var result = await userManager.CreateAsync(adminUser, options.AdminPassword);
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Could not create the initial admin: {string.Join("; ", result.Errors.Select(e => e.Description))}");
+
+            await userManager.AddToRoleAsync(adminUser, Roles.Admin);
         }
 
+        if (options.SeedSampleData)
+            await SeedSampleDataAsync(context);
+    }
+
+    private static async Task SeedSampleDataAsync(ApplicationDbContext context)
+    {
         // Seed categories
         if (!context.Categories.Any())
         {

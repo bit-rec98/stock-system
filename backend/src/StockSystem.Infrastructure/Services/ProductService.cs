@@ -1,8 +1,8 @@
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using StockSystem.Application.Common;
 using StockSystem.Application.DTOs.Product;
 using StockSystem.Application.Interfaces;
+using StockSystem.Application.Mappings;
 using StockSystem.Domain.Entities;
 using StockSystem.Domain.Interfaces;
 
@@ -11,18 +11,15 @@ namespace StockSystem.Infrastructure.Services;
 public class ProductService : IProductService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
     private readonly IPdfExportService _pdfExportService;
     private readonly IExcelExportService _excelExportService;
 
     public ProductService(
         IUnitOfWork unitOfWork,
-        IMapper mapper,
         IPdfExportService pdfExportService,
         IExcelExportService excelExportService)
     {
         _unitOfWork = unitOfWork;
-        _mapper = mapper;
         _pdfExportService = pdfExportService;
         _excelExportService = excelExportService;
     }
@@ -30,10 +27,24 @@ public class ProductService : IProductService
     public async Task<ProductDto?> GetByIdAsync(int id)
     {
         var product = await _unitOfWork.Products.GetByIdWithDetailsAsync(id);
-        return product == null ? null : _mapper.Map<ProductDto>(product);
+        return product == null ? null : product.ToDto();
     }
 
     public async Task<PagedResult<ProductDto>> GetAllAsync(ProductFilterParams filterParams)
+    {
+        var query = BuildFilteredQuery(filterParams);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
+            .Take(filterParams.PageSize)
+            .ToListAsync();
+
+        return new PagedResult<ProductDto>(items.ToDtos(), totalCount, filterParams.PageNumber, filterParams.PageSize);
+    }
+
+    private IQueryable<Product> BuildFilteredQuery(ProductFilterParams filterParams)
     {
         var query = _unitOfWork.Products.Query();
 
@@ -77,22 +88,13 @@ public class ProductService : IProductService
             _ => query.OrderByDescending(p => p.CreatedAt)
         };
 
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
-            .Take(filterParams.PageSize)
-            .ToListAsync();
-
-        var dtos = _mapper.Map<IEnumerable<ProductDto>>(items);
-
-        return new PagedResult<ProductDto>(dtos, totalCount, filterParams.PageNumber, filterParams.PageSize);
+        return query;
     }
 
     public async Task<IEnumerable<ProductDto>> GetLowStockProductsAsync()
     {
         var products = await _unitOfWork.Products.GetLowStockProductsAsync();
-        return _mapper.Map<IEnumerable<ProductDto>>(products);
+        return products.ToDtos();
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductDto dto)
@@ -100,12 +102,12 @@ public class ProductService : IProductService
         if (await _unitOfWork.Products.SkuExistsAsync(dto.SKU))
             throw new InvalidOperationException($"A product with SKU '{dto.SKU}' already exists.");
 
-        var product = _mapper.Map<Product>(dto);
+        var product = dto.ToEntity();
         await _unitOfWork.Products.AddAsync(product);
         await _unitOfWork.SaveChangesAsync();
 
         var createdProduct = await _unitOfWork.Products.GetByIdWithDetailsAsync(product.Id);
-        return _mapper.Map<ProductDto>(createdProduct!);
+        return createdProduct!.ToDto();
     }
 
     public async Task<ProductDto?> UpdateAsync(int id, UpdateProductDto dto)
@@ -113,12 +115,12 @@ public class ProductService : IProductService
         var product = await _unitOfWork.Products.GetByIdWithDetailsAsync(id);
         if (product == null) return null;
 
-        _mapper.Map(dto, product);
+        dto.ApplyTo(product);
         await _unitOfWork.Products.UpdateAsync(product);
         await _unitOfWork.SaveChangesAsync();
 
         var updatedProduct = await _unitOfWork.Products.GetByIdWithDetailsAsync(id);
-        return _mapper.Map<ProductDto>(updatedProduct!);
+        return updatedProduct!.ToDto();
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -145,9 +147,8 @@ public class ProductService : IProductService
 
     private async Task<IEnumerable<ProductDto>> GetFilteredProductsForExport(ProductFilterParams? filterParams)
     {
-        filterParams ??= new ProductFilterParams { PageSize = int.MaxValue };
-        filterParams.PageSize = int.MaxValue; // Get all matching records for export
-        var result = await GetAllAsync(filterParams);
-        return result.Items;
+        // Exports include every matching record, so they bypass the page-size cap used by the list endpoint.
+        var items = await BuildFilteredQuery(filterParams ?? new ProductFilterParams()).ToListAsync();
+        return items.ToDtos();
     }
 }

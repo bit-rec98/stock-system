@@ -7,7 +7,7 @@ namespace StockSystem.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = Policies.StaffOrAdmin)]
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -72,6 +72,7 @@ public class ProductsController : ControllerBase
         }
     }
 
+    [Authorize(Policy = Policies.AdminOnly)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

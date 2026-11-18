@@ -1,8 +1,8 @@
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using StockSystem.Application.Common;
 using StockSystem.Application.DTOs.Category;
 using StockSystem.Application.Interfaces;
+using StockSystem.Application.Mappings;
 using StockSystem.Domain.Entities;
 using StockSystem.Domain.Interfaces;
 using StockSystem.Infrastructure.Data;
@@ -12,13 +12,11 @@ namespace StockSystem.Infrastructure.Services;
 public class CategoryService : ICategoryService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
     private readonly ApplicationDbContext _context;
 
-    public CategoryService(IUnitOfWork unitOfWork, IMapper mapper, ApplicationDbContext context)
+    public CategoryService(IUnitOfWork unitOfWork, ApplicationDbContext context)
     {
         _unitOfWork = unitOfWork;
-        _mapper = mapper;
         _context = context;
     }
 
@@ -27,7 +25,7 @@ public class CategoryService : ICategoryService
         var category = await _context.Categories
             .Include(c => c.Products)
             .FirstOrDefaultAsync(c => c.Id == id);
-        return category == null ? null : _mapper.Map<CategoryDto>(category);
+        return category == null ? null : category.ToDto();
     }
 
     public async Task<IEnumerable<CategoryDto>> GetAllAsync()
@@ -35,7 +33,7 @@ public class CategoryService : ICategoryService
         var categories = await _context.Categories
             .Include(c => c.Products)
             .ToListAsync();
-        return _mapper.Map<IEnumerable<CategoryDto>>(categories);
+        return categories.ToDtos();
     }
 
     public async Task<PagedResult<CategoryDto>> GetPagedAsync(PaginationParams paginationParams)
@@ -50,7 +48,7 @@ public class CategoryService : ICategoryService
             .Take(paginationParams.PageSize)
             .ToListAsync();
 
-        var dtos = _mapper.Map<IEnumerable<CategoryDto>>(items);
+        var dtos = items.ToDtos();
         
         return new PagedResult<CategoryDto>(dtos, totalCount, paginationParams.PageNumber, paginationParams.PageSize);
     }
@@ -60,11 +58,11 @@ public class CategoryService : ICategoryService
         if (await _unitOfWork.Categories.NameExistsAsync(dto.Name))
             throw new InvalidOperationException($"A category with name '{dto.Name}' already exists.");
 
-        var category = _mapper.Map<Category>(dto);
+        var category = dto.ToEntity();
         await _unitOfWork.Categories.AddAsync(category);
         await _unitOfWork.SaveChangesAsync();
 
-        return _mapper.Map<CategoryDto>(category);
+        return category.ToDto();
     }
 
     public async Task<CategoryDto?> UpdateAsync(int id, UpdateCategoryDto dto)
@@ -75,11 +73,11 @@ public class CategoryService : ICategoryService
         if (await _unitOfWork.Categories.NameExistsAsync(dto.Name, id))
             throw new InvalidOperationException($"A category with name '{dto.Name}' already exists.");
 
-        _mapper.Map(dto, category);
+        dto.ApplyTo(category);
         await _unitOfWork.Categories.UpdateAsync(category);
         await _unitOfWork.SaveChangesAsync();
 
-        return _mapper.Map<CategoryDto>(category);
+        return category.ToDto();
     }
 
     public async Task<bool> DeleteAsync(int id)

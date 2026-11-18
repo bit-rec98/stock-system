@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using StockSystem.Application.Common;
 using StockSystem.Application.DTOs.Auth;
 using StockSystem.Application.Interfaces;
+using StockSystem.Domain.Common;
 using StockSystem.Domain.Entities;
 
 namespace StockSystem.Infrastructure.Services;
@@ -14,28 +15,38 @@ namespace StockSystem.Infrastructure.Services;
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IConfiguration _configuration;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole> roleManager,
         IConfiguration configuration)
     {
         _userManager = userManager;
-        _roleManager = roleManager;
         _configuration = configuration;
     }
+
+    private const string InvalidCredentials = "Invalid email or password.";
 
     public async Task<Result<AuthResponseDto>> LoginAsync(LoginDto loginDto)
     {
         var user = await _userManager.FindByEmailAsync(loginDto.Email);
-        if (user == null || !await _userManager.CheckPasswordAsync(user, loginDto.Password))
-            return Result<AuthResponseDto>.Failure("Invalid email or password.");
+        if (user == null)
+            return Result<AuthResponseDto>.Failure(InvalidCredentials);
+
+        // Same message for locked and wrong-password cases so the response does not reveal account state.
+        if (await _userManager.IsLockedOutAsync(user))
+            return Result<AuthResponseDto>.Failure(InvalidCredentials);
+
+        if (!await _userManager.CheckPasswordAsync(user, loginDto.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Result<AuthResponseDto>.Failure(InvalidCredentials);
+        }
 
         if (!user.IsActive)
             return Result<AuthResponseDto>.Failure("User account is disabled.");
 
+        await _userManager.ResetAccessFailedCountAsync(user);
         user.LastLoginAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
 
@@ -48,15 +59,18 @@ public class AuthService : IAuthService
             user.FirstName,
             user.LastName,
             roles,
-            DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpirationHours"] ?? "24"))
+            DateTime.UtcNow.AddHours(GetExpirationHours())
         ));
     }
 
-    public async Task<Result<AuthResponseDto>> RegisterAsync(RegisterDto registerDto)
+    public async Task<Result<UserDto>> RegisterAsync(RegisterDto registerDto)
     {
+        if (!Roles.IsValid(registerDto.Role))
+            return Result<UserDto>.Failure("Invalid role.");
+
         var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
         if (existingUser != null)
-            return Result<AuthResponseDto>.Failure("User with this email already exists.");
+            return Result<UserDto>.Failure("User with this email already exists.");
 
         var user = new ApplicationUser
         {
@@ -68,39 +82,17 @@ public class AuthService : IAuthService
 
         var result = await _userManager.CreateAsync(user, registerDto.Password);
         if (!result.Succeeded)
-            return Result<AuthResponseDto>.Failure(result.Errors.Select(e => e.Description));
+            return Result<UserDto>.Failure(result.Errors.Select(e => e.Description));
 
-        // Assign Admin role by default for this app (as per requirements)
-        await AssignRoleAsync(user.Email, "Admin");
-
-        var token = await GenerateJwtToken(user);
-        var roles = await _userManager.GetRolesAsync(user);
-
-        return Result<AuthResponseDto>.Success(new AuthResponseDto(
-            token,
-            user.Email!,
-            user.FirstName,
-            user.LastName,
-            roles,
-            DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpirationHours"] ?? "24"))
-        ));
-    }
-
-    public async Task<Result<bool>> AssignRoleAsync(string email, string role)
-    {
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user == null)
-            return Result<bool>.Failure("User not found.");
-
-        if (!await _roleManager.RoleExistsAsync(role))
+        var roleResult = await _userManager.AddToRoleAsync(user, registerDto.Role);
+        if (!roleResult.Succeeded)
         {
-            await _roleManager.CreateAsync(new IdentityRole(role));
+            // Do not leave a user without a role behind.
+            await _userManager.DeleteAsync(user);
+            return Result<UserDto>.Failure(roleResult.Errors.Select(e => e.Description));
         }
 
-        var result = await _userManager.AddToRoleAsync(user, role);
-        return result.Succeeded 
-            ? Result<bool>.Success(true) 
-            : Result<bool>.Failure(result.Errors.Select(e => e.Description));
+        return Result<UserDto>.Success(new UserDto(user.Email!, user.FirstName, user.LastName, registerDto.Role));
     }
 
     public async Task<Result<bool>> ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto)
@@ -115,6 +107,10 @@ public class AuthService : IAuthService
 
         return Result<bool>.Success(true);
     }
+
+    private double GetExpirationHours() =>
+        double.TryParse(_configuration["Jwt:ExpirationHours"], System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var hours) && hours > 0 ? hours : 8;
 
     private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
@@ -138,7 +134,7 @@ public class AuthService : IAuthService
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpirationHours"] ?? "24")),
+            expires: DateTime.UtcNow.AddHours(GetExpirationHours()),
             signingCredentials: credentials
         );
 

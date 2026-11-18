@@ -6,7 +6,9 @@ namespace StockSystem.Application.Interfaces;
 public interface IAuthService
 {
     Task<Result<AuthResponseDto>> LoginAsync(LoginDto loginDto);
-    Task<Result<AuthResponseDto>> RegisterAsync(RegisterDto registerDto);
-    Task<Result<bool>> AssignRoleAsync(string email, string role);
+
+    /// <summary>Creates a user with the requested role. Callers must be authorized as Admin.</summary>
+    Task<Result<UserDto>> RegisterAsync(RegisterDto registerDto);
+
     Task<Result<bool>> ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto);
 }

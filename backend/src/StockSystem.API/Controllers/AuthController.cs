@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using StockSystem.Application.DTOs.Auth;
 using StockSystem.Application.Interfaces;
 
@@ -17,6 +18,8 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
     {
@@ -28,18 +31,21 @@ public class AuthController : ControllerBase
         return Ok(result.Data);
     }
 
+    /// <summary>Creates a user with the given role. Admin only; there is no self-registration.</summary>
+    [Authorize(Policy = Policies.AdminOnly)]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
     {
         var result = await _authService.RegisterAsync(registerDto);
-        
+
         if (!result.IsSuccess)
             return BadRequest(new { message = result.Error, errors = result.Errors });
 
-        return Ok(result.Data);
+        return StatusCode(StatusCodes.Status201Created, result.Data);
     }
 
     [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
     {

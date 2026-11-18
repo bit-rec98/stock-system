@@ -8,7 +8,7 @@ namespace StockSystem.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = Policies.StaffOrAdmin)]
 public class CategoriesController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
@@ -42,6 +42,7 @@ public class CategoriesController : ControllerBase
         return Ok(category);
     }
 
+    [Authorize(Policy = Policies.AdminOnly)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
     {
@@ -56,6 +57,7 @@ public class CategoriesController : ControllerBase
         }
     }
 
+    [Authorize(Policy = Policies.AdminOnly)]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateCategoryDto dto)
     {
@@ -73,6 +75,7 @@ public class CategoriesController : ControllerBase
         }
     }
 
+    [Authorize(Policy = Policies.AdminOnly)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
